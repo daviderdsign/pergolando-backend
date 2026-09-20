@@ -18,6 +18,10 @@ describe('Auth + bundle (e2e)', () => {
     process.env.DATABASE_URL = `file:${TEST_DB_PATH}`;
     process.env.BUNDLE_PATH = join(process.cwd(), 'test', 'fixtures', 'bundle');
     process.env.SESSION_COOKIE_SECURE = 'false';
+    // This suite predates email verification and exercises the base
+    // auth+bundle flow — see verification-and-reset.e2e-spec.ts for the
+    // EMAIL_VERIFICATION_ENABLED=true flow.
+    process.env.EMAIL_VERIFICATION_ENABLED = 'false';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: process.cwd(),

@@ -30,4 +30,8 @@ export class PrismaSessionStore implements SessionStore {
       .delete({ where: { id: sessionId } })
       .catch(() => undefined);
   }
+
+  async deleteAllForSeller(sellerId: string): Promise<void> {
+    await this.prisma.session.deleteMany({ where: { sellerId } });
+  }
 }
