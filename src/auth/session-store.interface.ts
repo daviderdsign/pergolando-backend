@@ -15,6 +15,8 @@ export interface SessionStore {
   /** Sliding expiry: extends expiresAt by the session TTL. */
   touch(sessionId: string): Promise<void>;
   delete(sessionId: string): Promise<void>;
+  /** Used on password reset — force re-login everywhere for that account. */
+  deleteAllForSeller(sellerId: string): Promise<void>;
 }
 
 export const SESSION_STORE = Symbol('SESSION_STORE');

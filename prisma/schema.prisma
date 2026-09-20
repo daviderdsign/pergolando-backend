@@ -16,6 +16,9 @@ model Seller {
   id                  String    @id @default(cuid())
   email               String    @unique
   passwordHash        String
+  /// Null until the email is confirmed via a VerificationCode. Login is
+  /// blocked while null when EMAIL_VERIFICATION_ENABLED=true.
+  emailVerifiedAt     DateTime?
   /// Consecutive failed login attempts; reset to 0 on success. Drives the
   /// per-account lockout in AuthService (separate from the per-IP throttle).
   failedLoginAttempts Int       @default(0)
@@ -24,9 +27,35 @@ model Seller {
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
 
-  sessions Session[]
+  sessions          Session[]
+  verificationCodes VerificationCode[]
 
   @@map("sellers")
+}
+
+enum VerificationCodePurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model VerificationCode {
+  id         String                  @id @default(cuid())
+  sellerId   String
+  seller     Seller                  @relation(fields: [sellerId], references: [id])
+  purpose    VerificationCodePurpose
+  /// Argon2id hash of the 6-digit code — never store it in plaintext, same
+  /// reasoning as passwords: a DB dump shouldn't hand out working codes.
+  codeHash   String
+  /// Incremented on each failed check; the code is rejected outright past
+  /// MAX_VERIFICATION_ATTEMPTS regardless of TTL, to make brute-forcing a
+  /// 6-digit space impractical even before it expires.
+  attempts   Int                     @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime                @default(now())
+
+  @@index([sellerId, purpose])
+  @@map("verification_codes")
 }
 
 model Session {
