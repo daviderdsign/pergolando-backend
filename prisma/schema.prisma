@@ -1,0 +1,77 @@
+// One deployment per tenant (see README): no tenant_id column anywhere —
+// isolation is the separate container + separate SQLite file, not a query filter.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Connection URL lives in prisma.config.ts (Prisma 7); the runtime
+// PrismaClient gets its connection via a driver adapter instead — see
+// src/prisma/prisma.service.ts.
+datasource db {
+  provider = "sqlite"
+}
+
+model Seller {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  passwordHash        String
+  /// Consecutive failed login attempts; reset to 0 on success. Drives the
+  /// per-account lockout in AuthService (separate from the per-IP throttle).
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  sessions Session[]
+
+  @@map("sellers")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    Seller   @relation(fields: [sellerId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([sellerId])
+  @@map("sessions")
+}
+
+model EndClient {
+  id        String    @id @default(cuid())
+  nome      String
+  cognome   String
+  indirizzo String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  quotes Quote[]
+
+  @@map("end_clients")
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  SIGNED
+}
+
+model Quote {
+  id             String      @id @default(cuid())
+  endClientId    String
+  endClient      EndClient   @relation(fields: [endClientId], references: [id])
+  status         QuoteStatus @default(DRAFT)
+  bundleVersion  String
+  /// JSON-encoded configuration + price breakdown from the pricing engine.
+  configuration  String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  @@index([endClientId])
+  @@map("quotes")
+}

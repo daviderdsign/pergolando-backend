@@ -1,0 +1,7 @@
+{
+  "tenant_id": "test-tenant",
+  "nome_azienda": "Test Tenant S.r.l.",
+  "bundle_version": "0.1.0",
+  "data_export": "2026-01-01T00:00:00.000Z",
+  "schema_version": "1.0.0"
+}
