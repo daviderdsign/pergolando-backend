@@ -75,5 +75,6 @@
       "prettier --write",
       "oxlint --type-aware"
     ]
-  }
+  },
+  "packageManager": "pnpm@11.9.0"
 }
