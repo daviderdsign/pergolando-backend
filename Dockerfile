@@ -3,9 +3,13 @@ RUN corepack enable
 WORKDIR /app
 
 FROM base AS deps
-# The @pergolando/shared git dependency's "prepare" script needs git + a full
-# devDependency install (it compiles itself from TypeScript on install).
-RUN apt-get update && apt-get install -y --no-install-recommends git openssl ca-certificates \
+# git: @pergolando/shared's "prepare" script (it compiles itself from
+# TypeScript on install). python3/make/g++: better-sqlite3 and argon2 ship
+# prebuilt binaries for common platforms, but fall back to compiling from
+# source (node-gyp) when none matches — needs a full native toolchain, not
+# just the runtime libs.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git openssl ca-certificates python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 # Only needs to be RESOLVABLE for `prisma generate` (part of postinstall) —
 # not a real connection; the runtime container gets the real value at `docker run`.
