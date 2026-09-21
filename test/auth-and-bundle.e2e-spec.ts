@@ -94,6 +94,37 @@ describe('Auth + bundle (e2e)', () => {
       expect.arrayContaining(['P', 'S']),
     );
 
+    const configuraRes = await request(app.getHttpServer())
+      .post('/api/v1/catalog/configura')
+      .set('Cookie', cookie)
+      .send({
+        sottoModello: 'P',
+        varianteMontaggio: '01L',
+        pRichiestaCm: 300,
+        lRichiestaCm: 200,
+        coloreStruttura: 'RAL 9016 Bianco sablé',
+        colorePlastica: 'Bianco',
+        altezzaMontantiCm: 200,
+        opzioneTecnica: 'H20',
+      })
+      .expect(200);
+    expect(configuraRes.body.configurazione.prezzo_totale_eur).toBe(9290);
+
+    const invalidRes = await request(app.getHttpServer())
+      .post('/api/v1/catalog/configura')
+      .set('Cookie', cookie)
+      .send({
+        sottoModello: 'nonEsiste',
+        varianteMontaggio: '01L',
+        pRichiestaCm: 300,
+        lRichiestaCm: 200,
+        coloreStruttura: 'RAL 9016 Bianco sablé',
+        colorePlastica: 'Bianco',
+        altezzaMontantiCm: 200,
+      })
+      .expect(400);
+    expect(invalidRes.body.error.code).toBe('CONFIGURAZIONE_NON_VALIDA');
+
     await request(app.getHttpServer())
       .post('/api/v1/auth/logout')
       .set('Cookie', cookie)
