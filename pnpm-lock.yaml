@@ -24,8 +24,8 @@ importers:
         specifier: ^6.7.0
         version: 6.7.0(@nestjs/common@12.0.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.3)(reflect-metadata@0.2.2)
       '@pergolando/shared':
-        specifier: github:daviderdsign/pergolando-shared#v0.2.0
-        version: https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/10c62814f70c3e205e510b95b1301195f4909e21
+        specifier: github:daviderdsign/pergolando-shared#v0.3.0
+        version: https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/fce9743a5bfd37679ade21995f057500ed627ea6
       '@prisma/adapter-better-sqlite3':
         specifier: ^7.10.0
         version: 7.10.0
@@ -630,8 +630,8 @@ packages:
   '@paralleldrive/cuid2@2.3.1':
     resolution: {integrity: sha512-XO7cAxhnTZl0Yggq6jOgjiOHhbgcO4NqFqwSmQpjK3b6TEE6Uj/jfSk6wzYyemh3+I0sHirKSetjQwn5cZktFw==}
 
-  '@pergolando/shared@https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/10c62814f70c3e205e510b95b1301195f4909e21':
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/10c62814f70c3e205e510b95b1301195f4909e21}
+  '@pergolando/shared@https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/fce9743a5bfd37679ade21995f057500ed627ea6':
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/fce9743a5bfd37679ade21995f057500ed627ea6}
     version: 0.1.0
     engines: {node: '>=24'}
 
@@ -3133,7 +3133,7 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
 
-  '@pergolando/shared@https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/10c62814f70c3e205e510b95b1301195f4909e21':
+  '@pergolando/shared@https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/fce9743a5bfd37679ade21995f057500ed627ea6':
     dependencies:
       zod: 3.25.76
 
