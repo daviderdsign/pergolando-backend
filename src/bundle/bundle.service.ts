@@ -17,12 +17,14 @@ import {
 export class BundleService implements OnModuleInit {
   private readonly logger = new Logger(BundleService.name);
   private bundle!: Bundle;
+  private bundlePath!: string;
 
   async onModuleInit(): Promise<void> {
     const bundlePath = process.env.BUNDLE_PATH;
     if (!bundlePath) {
       throw new Error('BUNDLE_PATH environment variable is required.');
     }
+    this.bundlePath = bundlePath;
 
     const [manifestRaw, databaseRaw, priceMatricesRaw, themeRaw] =
       await Promise.all([
@@ -69,6 +71,13 @@ export class BundleService implements OnModuleInit {
 
   getBranding(): Bundle['branding'] {
     return this.bundle.branding;
+  }
+
+  /** Absolute path to the logo file, or null if the bundle has none. */
+  getLogoFilePath(): string | null {
+    const logoPath = this.bundle.branding.theme.logo_path;
+    if (!logoPath) return null;
+    return join(this.bundlePath, logoPath);
   }
 
   getManifest(): Bundle['manifest'] {
