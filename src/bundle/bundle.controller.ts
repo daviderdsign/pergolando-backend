@@ -1,13 +1,18 @@
 import { createReadStream, existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import {
+  Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
+  Post,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { BundleService } from './bundle.service.js';
+import { ConfiguraDto } from './dto/configura.dto.js';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard.js';
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -22,11 +27,19 @@ const CONTENT_TYPES: Record<string, string> = {
 export class BundleController {
   constructor(private readonly bundleService: BundleService) {}
 
-  /** Products/sotto-modelli/varianti/colori — no prices yet (that's the next slice). */
+  /** Products/sotto-modelli/varianti/colori — see POST catalog/configura for pricing. */
   @UseGuards(SessionAuthGuard)
   @Get('catalog')
   getCatalog() {
     return { catalog: this.bundleService.getCatalog() };
+  }
+
+  /** Runs the pricing engine for a full configuration — dimensions, colors, comandi, accessori. */
+  @UseGuards(SessionAuthGuard)
+  @Post('catalog/configura')
+  @HttpCode(HttpStatus.OK)
+  configura(@Body() dto: ConfiguraDto) {
+    return { configurazione: this.bundleService.configura(dto) };
   }
 
   /**

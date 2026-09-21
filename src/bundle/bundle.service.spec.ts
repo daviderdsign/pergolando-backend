@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BundleService } from './bundle.service.js';
+import { DomainException } from '../common/domain-exception.js';
 
 async function writeBundle(
   dir: string,
@@ -65,5 +66,47 @@ describe('BundleService', () => {
     delete process.env.BUNDLE_PATH;
     const service = new BundleService();
     await expect(service.onModuleInit()).rejects.toThrow(/BUNDLE_PATH/);
+  });
+});
+
+describe('BundleService#configura', () => {
+  const service = new BundleService();
+
+  beforeEach(async () => {
+    process.env.BUNDLE_PATH = join(process.cwd(), 'test', 'fixtures', 'bundle');
+    await service.onModuleInit();
+  });
+
+  it('runs the pricing engine against this bundle and returns a price', () => {
+    const result = service.configura({
+      sottoModello: 'P',
+      varianteMontaggio: '01L',
+      pRichiestaCm: 300,
+      lRichiestaCm: 200,
+      coloreStruttura: 'RAL 9016 Bianco sablé',
+      colorePlastica: 'Bianco',
+      altezzaMontantiCm: 200,
+      opzioneTecnica: 'H20',
+    });
+    expect(result.prezzo_totale_eur).toBe(9290);
+  });
+
+  it('turns a ConfiguratoreError into a DomainException (400, CONFIGURAZIONE_NON_VALIDA)', () => {
+    try {
+      service.configura({
+        sottoModello: 'nonEsiste',
+        varianteMontaggio: '01L',
+        pRichiestaCm: 300,
+        lRichiestaCm: 200,
+        coloreStruttura: 'RAL 9016 Bianco sablé',
+        colorePlastica: 'Bianco',
+        altezzaMontantiCm: 200,
+      });
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(DomainException);
+      expect((err as DomainException).code).toBe('CONFIGURAZIONE_NON_VALIDA');
+      expect((err as DomainException).getStatus()).toBe(400);
+    }
   });
 });
