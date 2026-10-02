@@ -1,10 +1,12 @@
 import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   bundleSchema,
   type Bundle,
   type CatalogDatabase,
+  type AssetManifestEntry,
 } from '@pergolando/shared/schema';
 import {
   PergolaEngine,
@@ -42,6 +44,13 @@ export class BundleService implements OnModuleInit {
         readFile(join(bundlePath, 'branding', 'theme.json'), 'utf-8'),
       ]);
 
+    // assets/manifest.json is optional — Studio's export only creates it
+    // when the draft has at least one uploaded asset (see export-bundle.ts).
+    const assetsManifestPath = join(bundlePath, 'assets', 'manifest.json');
+    const assets = existsSync(assetsManifestPath)
+      ? JSON.parse(await readFile(assetsManifestPath, 'utf-8'))
+      : undefined;
+
     const candidate = {
       manifest: JSON.parse(manifestRaw),
       catalog: {
@@ -51,6 +60,7 @@ export class BundleService implements OnModuleInit {
       branding: {
         theme: JSON.parse(themeRaw),
       },
+      assets,
     };
 
     const result = bundleSchema.safeParse(candidate);
@@ -90,6 +100,16 @@ export class BundleService implements OnModuleInit {
     const logoPath = this.bundle.branding.theme.logo_path;
     if (!logoPath) return null;
     return join(this.bundlePath, logoPath);
+  }
+
+  /** Reference photos/renderings for this bundle's products (RenderService's raw material) — empty if Studio never uploaded any. */
+  getAssets(): AssetManifestEntry[] {
+    return this.bundle.assets ?? [];
+  }
+
+  /** Absolute path for an asset's manifest `path` (relative to the bundle root), same pattern as getLogoFilePath. */
+  getAssetFilePath(relativePath: string): string {
+    return join(this.bundlePath, relativePath);
   }
 
   getManifest(): Bundle['manifest'] {

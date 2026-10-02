@@ -7,6 +7,9 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { BundleModule } from './bundle/bundle.module.js';
+import { RenderModule } from './render/render.module.js';
+import { PerspectiveModule } from './perspective/perspective.module.js';
+import { Scene3dModule } from './scene3d/scene3d.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
@@ -28,6 +31,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     MailModule,
     AuthModule,
     BundleModule,
+    RenderModule,
+    PerspectiveModule,
+    Scene3dModule,
     HealthModule,
   ],
   providers: [
