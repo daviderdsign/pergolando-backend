@@ -58,7 +58,7 @@ export class MailService {
 
     if (!transporter) {
       this.logger.warn(
-        `SMTP_HOST not configured — email not sent. Would have sent "${message.subject}" to ${message.to}.`,
+        `SMTP_HOST not configured — email not sent. Would have sent "${message.subject}" to ${message.to}:\n${message.text}`,
       );
       return;
     }

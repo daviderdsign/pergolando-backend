@@ -12,3 +12,7 @@ allowBuilds:
   # the tag is re-pointed to a new commit, this key changes too — pnpm's
   # error message on install always prints the exact key to use.
   "@pergolando/shared@https://codeload.github.com/daviderdsign/pergolando-shared/tar.gz/fce9743a5bfd37679ade21995f057500ed627ea6": true
+  # @google/genai's postinstall and its protobufjs dependency (protocol
+  # buffer codegen) — both official, widely-used packages, safe to build.
+  '@google/genai': true
+  protobufjs: true
