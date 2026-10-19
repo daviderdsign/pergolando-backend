@@ -46,6 +46,48 @@ export class PuntoRiferimentoDto {
  * pergolando-geocalib-service — see PerspectiveService.
  */
 export class CalcolaProspettivaDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(8)
+  @ArrayMaxSize(12)
+  @ValidateNested({ each: true })
+  @Type(() => PuntoRiferimentoDto)
+  puntiFuga?: PuntoRiferimentoDto[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100000)
+  altezzaRiferimentoCm?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(1000)
+  focaleEquivalente35Mm?: number;
+
+  /** Visible floor edge perpendicular to the facade; direction only, no length. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => PuntoRiferimentoDto)
+  puntiProfondita?: PuntoRiferimentoDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => PuntoRiferimentoDto)
+  puntiVerticali?: PuntoRiferimentoDto[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  altezzaVerticaleCm?: number;
+
   /** The site photo itself (data URL or raw base64) — GeoCalib needs the
    * actual image, not just its pixel size. */
   @IsString()
@@ -62,7 +104,7 @@ export class CalcolaProspettivaDto {
    * pergola's own width, but editable when the seller traced a different,
    * more precisely measurable reference instead. */
   @IsNumber()
-  @Min(1)
+  @Min(0)
   lineaLunghezzaCm!: number;
 
   @IsNumber()
@@ -100,4 +142,9 @@ export class CalcolaProspettivaDto {
   @IsNumber()
   @Min(1)
   lineaControlloLunghezzaCm?: number;
+}
+
+export class AnalizzaFotoDto {
+  @IsString()
+  fotoBase64!: string;
 }

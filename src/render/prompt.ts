@@ -43,6 +43,14 @@ function structuralChecklist(
   input: ConfiguraDto,
   sottoModello: SottoModello,
   variante: VarianteMontaggio,
+  // false for buildCompositePrompt (2026-10-04): when a precisely
+  // positioned/scaled silhouette image already IS the ground truth for
+  // size, repeating width/depth as TEXT alongside it is redundant at best
+  // — at worst it gives the model a second, independent "source of truth"
+  // to reconcile against the images, which is pure risk with no upside.
+  // buildRenderPrompt has no such image (isolated product shot, no
+  // silhouette), so it still needs the explicit numbers.
+  includeDimensioni = true,
 ): string[] {
   const nomiComandi = (input.opzioniPrezzoFisso ?? [])
     .map((key) => sottoModello.opzioni_prezzo_fisso?.[key]?.nome)
@@ -57,7 +65,11 @@ function structuralChecklist(
 
   const righe = [
     `Prodotto: ${sottoModello.nome}${sottoModello.descrizione_it ? ` — ${sottoModello.descrizione_it}` : ''}. NON è una pergola bioclimatica: non ha lamelle orientabili, non si apre, non ha alcun meccanismo di rotazione o avvolgimento motorizzato visibile dall'esterno. È una pergola a telo retrattile con copertura in tessuto tecnico impermeabile, fissa nella forma.`,
-    `Dimensioni richieste dal cliente: larghezza ${L} cm, sporgenza ${P} cm (rapporto larghezza:sporgenza = ${L}:${P} — rispetta ESATTAMENTE queste proporzioni, non generare una forma diversa), altezza montanti ${configurazione.altezza_montanti_cm} cm, ${configurazione.n_moduli} modulo/i.`,
+    ...(includeDimensioni
+      ? [
+          `Dimensioni richieste dal cliente: larghezza ${L} cm, sporgenza ${P} cm (rapporto larghezza:sporgenza = ${L}:${P} — rispetta ESATTAMENTE queste proporzioni, non generare una forma diversa), altezza montanti ${configurazione.altezza_montanti_cm} cm, ${configurazione.n_moduli} modulo/i.`,
+        ]
+      : []),
     `Colore struttura: ${configurazione.colore_struttura}. Colore parti plastiche: ${configurazione.colore_plastica}.`,
   ];
 
@@ -123,6 +135,7 @@ export function buildCompositePrompt(
     input,
     sottoModello,
     variante,
+    false,
   );
 
   righe.push(
@@ -134,8 +147,10 @@ export function buildCompositePrompt(
     '- Non alterare il profilo della trave anteriore né il punto di innesto tra trave e guida: la forma esatta è quella delle immagini di riferimento, non una tua reinterpretazione stilistica.',
     '- Il tettuccio (il telo che copre dall\'alto) è un UNICO pannello continuo e piatto, con nervature parallele visibili solo come sottili linee sulla superficie — NON è un tetto a lamelle/doghe orientabili apribili in stile pergola bioclimatica: non aggiungere spazi/gap tra le "lamelle", non renderlo apribile, non dargli spessore/profondità come fossero listelli separati. Guarda le viste isolate dall\'alto e di lato per la forma esatta.',
     '- Non aggiungere illuminazione di nessun tipo — niente lampadine, niente fili di luci, niente lanterne, niente faretti — a meno che non sia esplicitamente elencata sopra come accessorio installato (es. luci LED integrate nel frangitratta). In questa configurazione, se non è elencata sopra, non va aggiunta.',
-    'Tutto il resto della foto (edificio, cielo, pavimentazione, arredi già presenti) deve restare invariato — stessa inquadratura, stessa luce, stesse ombre coerenti con la scena originale.',
-    "Sotto la pergola, aggiungi con libertà creativa un'ambientazione accogliente e curata (es. un tavolo con sedie, piante) per dare un effetto \"da rivista\" — qui, a differenza della struttura, la precisione dimensionale non conta: l'obiettivo è un colpo d'occhio invitante, non un arredo misurabile. Questa libertà creativa vale SOLO per l'arredo, mai per la struttura della pergola stessa.",
+    '- La pergola descritta sopra è l\'UNICA struttura di ombreggiamento da aggiungere o modificare in tutta l\'immagine. Se nella foto originale è già presente qualunque altra tenda da sole, tettoia, veranda, tenda a bracci, tapparella o braccio avvolgibile — anche chiuso/arrotolato/poco visibile — quell\'elemento deve comparire nel risultato ESATTAMENTE come nella foto originale: stesso stato (aperto o chiuso), stessa forma, stesso colore, nessuna estensione, nessuna riverniciatura, nessuna somiglianza stilistica con la nuova pergola. Non "completare" né "armonizzare" elementi preesistenti della facciata con il nuovo stile: è un errore già capitato in test precedenti.',
+    'Tutto il resto della foto (edificio, cielo, pavimentazione, arredi già presenti, incluse eventuali tende preesistenti) deve restare invariato — stessa inquadratura, stessa luce, stesse ombre coerenti con la scena originale.',
+    "Sotto la pergola, aggiungi con libertà creativa un'ambientazione accogliente e curata (es. un tavolo con sedie, un divanetto o delle poltroncine, piante) per dare un effetto \"da rivista\" — qui, a differenza della struttura, la precisione dimensionale non conta: l'obiettivo è un colpo d'occhio invitante, non un arredo misurabile. Questa libertà creativa vale SOLO per l'arredo, mai per la struttura della pergola stessa.",
+    "La direzione e la morbidezza della luce nella foto originale (es. sole radente, cielo coperto, ora del giorno) vanno rispettate su TUTTO ciò che aggiungi o ritocchi: la pergola deve proiettare un'ombra di contatto a terra coerente con quella direzione — visibile, non assente — e lo stesso vale per qualunque arredo aggiunto. Non inventare una sorgente di luce diversa da quella già presente nella foto.",
     'Restituisci una singola immagine fotorealistica, stessa risoluzione/inquadratura della foto originale.',
   );
 

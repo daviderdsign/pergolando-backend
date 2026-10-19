@@ -17,10 +17,9 @@ import {
 import { DomainException } from '../common/domain-exception.js';
 
 /**
- * Loads and validates this deployment's single bundle at boot from
- * BUNDLE_PATH — one tenant per deployment, so there is exactly one bundle
- * for the process's whole lifetime, not a per-request lookup. An invalid
- * bundle fails startup rather than serving broken data.
+ * The primary bundle retains account and company branding. Additional product
+ * catalogs are validated at boot and selected per request, with isolated pricing
+ * engines; selecting a brand never changes another seller's active catalog.
  */
 @Injectable()
 export class BundleService implements OnModuleInit {
@@ -28,6 +27,7 @@ export class BundleService implements OnModuleInit {
   private bundle!: Bundle;
   private bundlePath!: string;
   private engine!: PergolaEngine;
+  private additionalCatalogs = new Map<string, { bundle: Bundle; engine: PergolaEngine }>();
 
   async onModuleInit(): Promise<void> {
     const bundlePath = process.env.BUNDLE_PATH;
@@ -78,14 +78,32 @@ export class BundleService implements OnModuleInit {
       this.bundle.catalog.database,
       this.bundle.catalog.price_matrices,
     );
+    const praticPath = process.env.BUNDLE_PRATIC_PATH ?? join(bundlePath, '..', '..', 'brera-demo', '0.1.0');
+    if (existsSync(join(praticPath, 'manifest.json'))) {
+      const [manifest, database, matrices, theme] = await Promise.all([
+        readFile(join(praticPath, 'manifest.json'), 'utf-8'),
+        readFile(join(praticPath, 'catalog', 'database.json'), 'utf-8'),
+        readFile(join(praticPath, 'catalog', 'price_matrices.json'), 'utf-8'),
+        readFile(join(praticPath, 'branding', 'theme.json'), 'utf-8'),
+      ]);
+      const pratic = bundleSchema.parse({ manifest: JSON.parse(manifest), catalog: { database: JSON.parse(database), price_matrices: JSON.parse(matrices) }, branding: { theme: JSON.parse(theme) } });
+      this.additionalCatalogs.set('pratic', { bundle: pratic, engine: PergolaEngine.fromDatabase(pratic.catalog.database, pratic.catalog.price_matrices) });
+    }
     this.logger.log(
       `Loaded bundle for tenant "${this.bundle.manifest.tenant_id}" (schema ${this.bundle.manifest.schema_version}, bundle ${this.bundle.manifest.bundle_version}).`,
     );
   }
 
-  getCatalog(): CatalogDatabase {
-    return this.bundle.catalog.database;
+  private catalogEntry(id = 'arquati'): { bundle: Bundle; engine: PergolaEngine } {
+    if (id === 'arquati') return { bundle: this.bundle, engine: this.engine };
+    const entry = this.additionalCatalogs.get(id);
+    if (!entry) throw new DomainException('CATALOGO_NON_DISPONIBILE', 'Catalogo non disponibile.', HttpStatus.BAD_REQUEST);
+    return entry;
   }
+  getCatalogs() {
+    return [{ id: 'arquati', nome: 'Arquati', prodotto: this.bundle.catalog.database.prodotto.nome, renderingDisponibile: true }, ...Array.from(this.additionalCatalogs.entries()).map(([id, entry]) => ({ id, nome: 'Pratic', prodotto: entry.bundle.catalog.database.prodotto.nome, renderingDisponibile: true }))];
+  }
+  getCatalog(id = 'arquati'): CatalogDatabase { return this.catalogEntry(id).bundle.catalog.database; }
 
   getPriceMatrices(): Bundle['catalog']['price_matrices'] {
     return this.bundle.catalog.price_matrices;
@@ -122,9 +140,9 @@ export class BundleService implements OnModuleInit {
    * accessory not priced for this bucket, ...) becomes a 400 DomainException
    * with the engine's own message, same as every other domain error.
    */
-  configura(input: ConfiguraInput): ConfigurazionePergola {
+  configura(input: ConfiguraInput, catalogId = 'arquati'): ConfigurazionePergola {
     try {
-      return this.engine.configura(input);
+      return this.catalogEntry(catalogId).engine.configura(input);
     } catch (err) {
       if (err instanceof ConfiguratoreError) {
         throw new DomainException(

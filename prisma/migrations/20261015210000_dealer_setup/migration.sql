@@ -1,0 +1,3 @@
+CREATE TABLE "dealer_setup" ("sellerId" TEXT NOT NULL PRIMARY KEY,"revision" INTEGER NOT NULL DEFAULT 1,"profile" TEXT NOT NULL DEFAULT '{}',"completedAt" DATETIME,"mailVerifiedAt" DATETIME,"updatedAt" DATETIME NOT NULL);
+CREATE TABLE "dealer_agreements" ("id" TEXT NOT NULL PRIMARY KEY,"sellerId" TEXT NOT NULL,"version" TEXT NOT NULL,"documentHash" TEXT NOT NULL,"document" TEXT NOT NULL,"signer" TEXT NOT NULL,"company" TEXT NOT NULL,"mode" TEXT NOT NULL,"acceptedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE UNIQUE INDEX "dealer_agreements_sellerId_documentHash_key" ON "dealer_agreements"("sellerId","documentHash");

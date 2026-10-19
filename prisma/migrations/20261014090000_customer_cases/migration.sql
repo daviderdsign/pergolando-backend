@@ -1,0 +1,4 @@
+CREATE TABLE "customer_cases" ("id" TEXT NOT NULL PRIMARY KEY,"sellerId" TEXT NOT NULL,"firstName" TEXT NOT NULL,"lastName" TEXT NOT NULL,"email" TEXT NOT NULL,"phone" TEXT NOT NULL,"address" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL);
+CREATE INDEX "customer_cases_sellerId_updatedAt_idx" ON "customer_cases"("sellerId","updatedAt");
+CREATE TABLE "case_items" ("id" TEXT NOT NULL PRIMARY KEY,"caseId" TEXT NOT NULL,"requestKey" TEXT NOT NULL,"brand" TEXT NOT NULL,"productName" TEXT NOT NULL,"configuration" TEXT NOT NULL,"requestedConfiguration" TEXT NOT NULL,"catalogFingerprint" TEXT NOT NULL,"amountCents" INTEGER NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "case_items_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "customer_cases"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE UNIQUE INDEX "case_items_caseId_requestKey_key" ON "case_items"("caseId","requestKey");

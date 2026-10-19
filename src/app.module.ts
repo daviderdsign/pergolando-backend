@@ -1,3 +1,8 @@
+import {SetupModule} from './setup/setup.module.js';
+import {SetupGuard} from './setup/setup.guard.js';
+import {DealerCatalogsModule} from './dealer-catalogs/catalogs.module.js';
+import { CasesModule } from './cases/cases.module.js';
+import { QuoteDocumentModule } from './quote-document/quote-document.module.js';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -20,7 +25,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
       pinoHttp: {
         // request id + no PII beyond what's operationally necessary
         genReqId: (req) => req.headers['x-request-id'] ?? crypto.randomUUID(),
-        redact: ['req.headers.cookie', 'req.headers.authorization'],
+        redact: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-offer-token"]', 'req.headers["x-support-token"]'],
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
       },
     }),
@@ -28,7 +33,11 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
       throttlers: [{ ttl: 60_000, limit: 100 }], // per-IP default; login has its own tighter limit
     }),
     PrismaModule,
+    SetupModule,
     MailModule,
+    QuoteDocumentModule,
+    CasesModule,
+    DealerCatalogsModule,
     AuthModule,
     BundleModule,
     RenderModule,
@@ -38,7 +47,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: SetupGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
 })
 export class AppModule {}
+
