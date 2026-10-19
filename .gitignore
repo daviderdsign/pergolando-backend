@@ -8,3 +8,14 @@ coverage/
 data/
 .husky/_
 .DS_Store
+.env.*
+!.env.example
+backend.env
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.pem
+*.key
+/output/
+/work/

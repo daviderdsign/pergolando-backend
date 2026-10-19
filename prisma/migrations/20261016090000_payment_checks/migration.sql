@@ -1,0 +1,3 @@
+CREATE TABLE "case_payment_checks" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"caseId" TEXT NOT NULL,"entryId" TEXT NOT NULL,"requestKey" TEXT NOT NULL,"sellerId" TEXT NOT NULL,"status" TEXT NOT NULL,"method" TEXT NOT NULL,"reference" TEXT NOT NULL,"note" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "case_payment_checks_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "customer_cases"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE UNIQUE INDEX "case_payment_checks_caseId_requestKey_key" ON "case_payment_checks"("caseId","requestKey");
+CREATE INDEX "case_payment_checks_caseId_entryId_id_idx" ON "case_payment_checks"("caseId","entryId","id");

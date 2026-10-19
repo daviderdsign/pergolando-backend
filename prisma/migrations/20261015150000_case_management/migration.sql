@@ -1,0 +1,3 @@
+CREATE TABLE "case_activities" ("id" TEXT NOT NULL PRIMARY KEY,"caseId" TEXT NOT NULL,"requestKey" TEXT NOT NULL,"kind" TEXT NOT NULL,"text" TEXT NOT NULL,"details" TEXT NOT NULL DEFAULT '{}',"dueAt" DATETIME,"doneAt" DATETIME,"version" INTEGER NOT NULL DEFAULT 1,"lastMutationKey" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "case_activities_caseId_fkey" FOREIGN KEY("caseId") REFERENCES "customer_cases"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE UNIQUE INDEX "case_activities_caseId_requestKey_key" ON "case_activities"("caseId","requestKey");
+CREATE INDEX "case_activities_caseId_createdAt_idx" ON "case_activities"("caseId","createdAt");

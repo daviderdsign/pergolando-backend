@@ -1,0 +1,13 @@
+import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
+export async function handoverPdf(s:any,files:{name:string;mimeType:string;data:string}[]){
+ const doc=await PDFDocument.create(),font=await doc.embedFont(StandardFonts.TimesRoman),bold=await doc.embedFont(StandardFonts.HelveticaBold);let page:any,y=0,pageNumber=0;
+ function next(){page=doc.addPage([595.28,841.89]);pageNumber++;y=785;page.drawText('pergolando',{x:42,y,font:bold,size:19,color:rgb(.09,.25,.21)});for(const i of [4,9]){const x=42+bold.widthOfTextAtSize('pergolando'.slice(0,i),19);page.drawLine({start:{x:x+3,y:y+2.5},end:{x:x+8,y:y+8},thickness:1.7,color:rgb(.09,.25,.21)});}y-=35;page.drawText('VERBALE DI POSA E CONSEGNA',{x:42,y,font:bold,size:13});y-=28;page.drawText(`Revisione ${s.number} - pag. ${pageNumber}`,{x:42,y:28,font,size:9});}
+ function text(value:unknown,strong=false){const f=strong?bold:font;for(const paragraph of String(value??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').split('\n')){let line='';for(const ch of paragraph){if(f.widthOfTextAtSize(line+ch,11)>510){if(y<65)next();page.drawText(line,{x:42,y,font:f,size:11});y-=16;line='';}line+=ch;}if(y<65)next();page.drawText(line,{x:42,y,font:f,size:11});y-=16;}}
+ next();text(s.caseName,true);text(`Cliente: ${s.client}`);text(`Cantiere: ${s.siteAddress}`);text(`Data intervento: ${s.occurredOn}`);text(`Tecnico: ${s.technician}`);text(`Referente presente, se indicato: ${s.receiver||'non indicato'}`);if(s.dealer?.company)text(`Rivenditore: ${s.dealer.company}`);y-=12;text(`ESITO: ${s.outcomeLabel}`,true);text('Prodotti della proposta confermata:',true);for(const p of s.products)text(`${p.brand} - ${p.productName}`);y-=12;
+ for(const c of s.checks){if(y<120)next();text(`${c.label}: ${c.result==='OK'?'verificato':c.result==='ISSUE'?'anomalia / da completare':'non applicabile'}`,true);if(c.note)text(c.note);y-=8;}
+ text('Note e attivita svolte',true);text(s.note);if(s.reservations){y-=8;text('Riserve e attivita residue',true);text(s.reservations);}y-=12;text('Registrazione del rivenditore. Il nominativo del referente non costituisce firma del cliente.',false);
+ if(files.length){y-=8;text('Originali collegati:',true);for(const f of files)text(f.name);}
+ for(const f of files.filter(f=>['image/png','image/jpeg'].includes(f.mimeType))){next();text(f.name,true);const bytes=Buffer.from(f.data,'base64'),img=f.mimeType==='image/png'?await doc.embedPng(bytes):await doc.embedJpg(bytes);const scale=Math.min(510/img.width,(y-65)/img.height);page.drawImage(img,{x:42,y:y-img.height*scale,width:img.width*scale,height:img.height*scale});}
+ return Buffer.from(await doc.save());
+}
+

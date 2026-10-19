@@ -1,0 +1,2 @@
+CREATE TABLE "catalog_conversions" ("id" TEXT NOT NULL PRIMARY KEY,"catalogId" TEXT NOT NULL,"revision" INTEGER NOT NULL,"status" TEXT NOT NULL,"error" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL,CONSTRAINT "catalog_conversions_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "dealer_catalogs"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE INDEX "catalog_conversions_catalogId_createdAt_idx" ON "catalog_conversions"("catalogId","createdAt");

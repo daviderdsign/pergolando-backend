@@ -1,6 +1,10 @@
-import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class ConfiguraDto {
+  @IsOptional()
+  @IsIn(['arquati', 'pratic'])
+  catalogo?: string;
+
   @IsString()
   sottoModello!: string;
 

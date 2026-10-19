@@ -3,6 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 import { BundleService } from '../bundle/bundle.service.js';
 import { DomainException } from '../common/domain-exception.js';
 import { Scene3dService } from '../scene3d/scene3d.service.js';
+import { furniturePrompt } from './furniture-prompt.js';
+import { RenderMaskDto } from './dto/render-mask.dto.js';
 import { RenderFinaleDto } from './dto/render-finale.dto.js';
 import { buildCompositePrompt } from './prompt.js';
 import type { RenderResult } from './render.service.js';
@@ -32,6 +34,22 @@ export class RenderFinaleService {
     private readonly bundleService: BundleService,
     private readonly scene3dService: Scene3dService,
   ) {}
+
+  async renderMask(input:RenderMaskDto):Promise<RenderResult>{
+    const apiKey=process.env.GEMINI_API_KEY;
+    if(!apiKey)throw new DomainException('RENDER_NON_CONFIGURATO','Nano Banana non configurato: inserisci GEMINI_API_KEY nel backend.env del NAS.',HttpStatus.SERVICE_UNAVAILABLE);
+    const prompt=`IMMAGINE 1: foto reale con la pergola definitiva renderizzata da Blender. IMMAGINE 2: maschera perfettamente allineata, struttura bianca piena e resto nero. La maschera è solo una guida, non deve comparire nel risultato.
+NON TOCCARE ASSOLUTAMENTE LE FORME ESISTENTI!!! Mantieni esattamente posizione, prospettiva, dimensioni, numero e sezione dei montanti, travi, guide, copertura, dettagli e collegamenti della pergola. Non aggiungere né eliminare elementi!!! NON INSERIRE ASSOLUTAMENTE PIASTRE, FLANGE, STAFFE O BASAMENTI CHE COLLEGANO I MONTANTI VERTICALI AL PAVIMENTO!!! Non creare piastre ai piedi dei montanti: mantieni esattamente il collegamento a terra visibile nell’immagine originale!!!
+Solo all'interno della superficie bianca della maschera modifica il colore e la resa del materiale della pergola: ${input.color}, alluminio verniciato. Anche se il colore è già corretto, migliora solamente la resa di quel colore, senza cambiare le forme!!!
+Migliora luci e ombre di contatto a terra e sul muro coerenti con la foto. Fuori dalla struttura, sotto la pergola: ${furniturePrompt(input.environment,input.widthCm,input.depthCm)} Tutti gli elementi devono avere scala e prospettiva realistiche. Non coprire inutilmente i montanti. Non modificare edificio, insegne, testi, cielo o inquadratura. NON TOCCARE ASSOLUTAMENTE LA FORMA DELLA PERGOLA!!! Restituisci una sola fotografia ambientata.`;
+    try{
+      const ai=new GoogleGenAI({apiKey});
+      const response=await ai.models.generateContent({model:'gemini-3-pro-image-preview',contents:[{text:prompt},inlineImagePart(input.image),inlineImagePart(input.mask)],config:{temperature:0.2,responseModalities:['TEXT','IMAGE'],httpOptions:{timeout:180000}}});
+      const part=response.candidates?.[0]?.content?.parts?.find(p=>p.inlineData?.mimeType?.startsWith('image/'));
+      if(!part?.inlineData?.data)throw new Error('no-image');
+      return {imageBase64:part.inlineData.data,mimeType:part.inlineData.mimeType||'image/png'};
+    }catch(err){this.logger.warn({error:err instanceof Error?err.name:'unknown',status:(err as {status?:number}).status,code:(err as {code?:string}).code,causeCode:(err as {cause?:{code?:string}}).cause?.code},'Masked image generation failed');throw new DomainException('RENDER_FALLITO','Nano Banana non ha completato l’immagine. Il rendering Blender originale resta disponibile.',HttpStatus.BAD_GATEWAY);}
+  }
 
   async renderFinale(input: RenderFinaleDto): Promise<RenderResult> {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -82,6 +100,11 @@ export class RenderFinaleService {
           deltaHCm: input.deltaHCm,
           fissaggio: 'parete',
           viewPreset,
+          // Same variant the seller actually picked (2guide/3guide/4guide)
+          // — these reference views exist to show Gemini the real model, so
+          // they need to show the real guide count too, not silently
+          // default to 2 regardless of what was configured.
+          varianteMontaggio: input.varianteMontaggio,
         });
         contents.push(
           inlineImagePart(
@@ -97,21 +120,44 @@ export class RenderFinaleService {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents,
-      // Low temperature: default sampling was letting the model drift
-      // toward its own stylistic prior (bioclimatic slats, roller tubes,
-      // string lights) instead of sticking to the reference geometry —
-      // worth testing whether less "creative" sampling keeps it closer to
-      // what's actually shown. Not yet confirmed to help, see 3d/NOTES.md.
-      config: { temperature: 0.2, topP: 0.8 },
-    });
+    const generate = () =>
+      ai.models.generateContent({
+        model: MODEL,
+        contents,
+        // Low temperature: default sampling was letting the model drift
+        // toward its own stylistic prior (bioclimatic slats, roller tubes,
+        // string lights) instead of sticking to the reference geometry —
+        // worth testing whether less "creative" sampling keeps it closer to
+        // what's actually shown. Not yet confirmed to help, see 3d/NOTES.md.
+        config: { temperature: 0.2, topP: 0.8 },
+      });
 
-    const imagePart = response.candidates?.[0]?.content?.parts?.find(
+    let response = await generate();
+    let imagePart = response.candidates?.[0]?.content?.parts?.find(
       (part) => part.inlineData,
     );
+
+    // finishReason "IMAGE_OTHER" (confirmed live, 2026-10-04): Gemini's
+    // image generation can fail with no safety block and no promptFeedback
+    // at all — just an empty result, for no caller-visible reason. One
+    // retry with the identical request has cleared it in practice, so it's
+    // worth trying before actually failing the whole step.
     if (!imagePart?.inlineData?.data) {
+      this.logger.warn(
+        { finishReason: response.candidates?.[0]?.finishReason },
+        'render-finale: Gemini returned no image, retrying once',
+      );
+      response = await generate();
+      imagePart = response.candidates?.[0]?.content?.parts?.find(
+        (part) => part.inlineData,
+      );
+    }
+
+    if (!imagePart?.inlineData?.data) {
+      this.logger.error(
+        { finishReason: response.candidates?.[0]?.finishReason },
+        'render-finale: Gemini returned no image on retry either',
+      );
       throw new DomainException(
         'RENDER_FALLITO',
         'Il motore di rendering non ha restituito nessuna immagine.',

@@ -9,6 +9,7 @@ import {
 import { RenderService } from './render.service.js';
 import { RenderFinaleService } from './render-finale.service.js';
 import { ConfiguraDto } from '../bundle/dto/configura.dto.js';
+import { RenderMaskDto } from './dto/render-mask.dto.js';
 import { RenderFinaleDto } from './dto/render-finale.dto.js';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard.js';
 
@@ -18,6 +19,11 @@ export class RenderController {
     private readonly renderService: RenderService,
     private readonly renderFinaleService: RenderFinaleService,
   ) {}
+
+  @UseGuards(SessionAuthGuard)
+  @Post('catalog/render-mask')
+  @HttpCode(HttpStatus.OK)
+  async renderMask(@Body() dto:RenderMaskDto){return this.renderFinaleService.renderMask(dto);}
 
   /**
    * Same input shape as POST catalog/configura — a render is generated for

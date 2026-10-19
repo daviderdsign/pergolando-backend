@@ -8,6 +8,7 @@ import {
   HttpStatus,
   NotFoundException,
   Post,
+  Query,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
@@ -30,16 +31,20 @@ export class BundleController {
   /** Products/sotto-modelli/varianti/colori — see POST catalog/configura for pricing. */
   @UseGuards(SessionAuthGuard)
   @Get('catalog')
-  getCatalog() {
-    return { catalog: this.bundleService.getCatalog() };
+  getCatalog(@Query('catalogo') catalogo?: string) {
+    return { catalog: this.bundleService.getCatalog(catalogo) };
   }
+
+  @UseGuards(SessionAuthGuard)
+  @Get('catalogs')
+  getCatalogs() { return { cataloghi: this.bundleService.getCatalogs() }; }
 
   /** Runs the pricing engine for a full configuration — dimensions, colors, comandi, accessori. */
   @UseGuards(SessionAuthGuard)
   @Post('catalog/configura')
   @HttpCode(HttpStatus.OK)
   configura(@Body() dto: ConfiguraDto) {
-    return { configurazione: this.bundleService.configura(dto) };
+    return { configurazione: this.bundleService.configura(dto, dto.catalogo) };
   }
 
   /**

@@ -104,3 +104,715 @@ model Quote {
   @@index([endClientId])
   @@map("quotes")
 }
+
+// A deployment belongs to one dealer. In this first release a seller owns each case.
+model CustomerCase {
+ supportAccesses SupportAccess[]
+ supportTickets SupportTicket[]
+ handovers CaseHandover[]
+ installationEvents CaseInstallationEvent[]
+ orders CaseOrderBatch[]
+ paymentChecks CasePaymentCheck[]
+ activities CaseActivity[]
+ id String @id @default(cuid())
+ sellerId String
+ firstName String
+ lastName String
+ email String
+ phone String
+ address String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ items CaseItem[]
+ financeRevision Int @default(0)
+ costsComplete Boolean @default(false)
+ deliveredAt DateTime?
+ financeEntries CaseFinanceEntry[]
+ financeDocuments CaseFinanceDocument[]
+ proposals CaseProposal[]
+ media CaseMedia[]
+ proposalRevision Int @default(0)
+ acceptedProposalId String?
+ confirmedProposalId String?
+ @@index([sellerId, updatedAt])
+ @@map("customer_cases")
+ caseName String @default("")
+ companyName String @default("")
+ siteAddress String @default("")
+ projectNotes String @default("")
+ creationKey String?
+ files CaseFile[]
+ @@unique([sellerId,creationKey])
+
+}
+model CaseItem {
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ requestKey String
+ brand String
+ productName String
+ configuration String
+ requestedConfiguration String
+ mediaIds String @default("{}")
+ version Int @default(1)
+ archivedAt DateTime?
+ lastMutationKey String?
+ catalogFingerprint String
+ amountCents Int
+ createdAt DateTime @default(now())
+ @@unique([caseId,requestKey])
+ @@map("case_items")
+}
+
+model CaseFinanceEntry {
+ sourceSupportWorkId String?
+ sourceSupportQuoteId String?
+ supportSettlement String?
+ @@index([caseId,sourceSupportWorkId])
+ absorbsEntryId String?
+ @@unique([caseId,absorbsEntryId])
+ sourceWorkId String?
+ @@index([caseId,sourceWorkId])
+ sourceOrderKey String?
+ @@index([caseId,sourceOrderKey])
+ sourceOrderEventId String? @unique
+ costPending Boolean @default(false)
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ requestKey String
+ kind String
+ stage String
+ description String
+ supplier String
+ amountCents Int
+ hours Float?
+ hourlyRateCents Int?
+ supersedesId String?
+ documentId String?
+ occurredOn String
+ createdAt DateTime @default(now())
+ @@unique([caseId,requestKey])
+ @@unique([caseId,supersedesId])
+ @@index([caseId])
+ @@map("case_finance_entries")
+}
+model CaseFinanceDocument {
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ name String
+ mimeType String
+ hash String
+ data String
+ createdAt DateTime @default(now())
+ @@unique([caseId,hash])
+ @@map("case_finance_documents")
+}
+
+model CaseProposal {
+ deliveries ProposalDelivery[]
+ invitations ProposalInvitation[]
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ number Int
+ requestKey String
+ snapshot String
+ createdAt DateTime @default(now())
+ @@unique([caseId,number])
+ @@unique([caseId,requestKey])
+ @@map("case_proposals")
+}
+
+model CaseMedia {
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ hash String
+ data String
+ mimeType String
+ createdAt DateTime @default(now())
+ @@unique([caseId,hash])
+ @@map("case_media")
+}
+
+model DealerCatalog {
+ id String @id @default(cuid())
+ sellerId String
+ name String
+ brand String
+ version Int @default(1)
+ previousId String? @unique
+ revision Int @default(1)
+ status String @default("DRAFT")
+ dataset String
+ approvedAt DateTime?
+ approvedHash String?
+ approvalNotice String?
+ approvedBy String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ conversions CatalogConversion[]
+ tests CatalogCheck[]
+ sources CatalogSource[]
+ @@index([sellerId,status])
+ @@map("dealer_catalogs")
+}
+model CatalogCheck {
+ generatedKey String?
+ generatedSnapshot String?
+ reviewedAt DateTime?
+ reviewedBy String?
+ reviewNote String?
+ @@unique([catalogId,revision,generatedKey])
+ id String @id @default(cuid())
+ catalogId String
+ catalog DealerCatalog @relation(fields:[catalogId],references:[id],onDelete:Cascade)
+ revision Int
+ tableId String
+ widthCm Float
+ depthCm Float
+ rule String
+ expectedCents Int?
+ expectedReject Boolean
+ actualCents Int?
+ passed Boolean
+ message String
+ createdAt DateTime @default(now())
+ @@index([catalogId,revision])
+ @@map("catalog_checks")
+}
+model CatalogSource {
+ id String @id @default(cuid())
+ catalogId String
+ catalog DealerCatalog @relation(fields:[catalogId],references:[id],onDelete:Cascade)
+ name String
+ hash String
+ size Int
+ data String?
+ complete Boolean @default(false)
+ chunks CatalogChunk[]
+ @@unique([catalogId,name])
+ @@map("catalog_sources")
+}
+model CatalogChunk {
+ id String @id @default(cuid())
+ sourceId String
+ source CatalogSource @relation(fields:[sourceId],references:[id],onDelete:Cascade)
+ part Int
+ data String
+ @@unique([sourceId,part])
+ @@map("catalog_chunks")
+}
+
+model ProposalInvitation {
+ id String @id @default(cuid())
+ proposalId String
+ proposal CaseProposal @relation(fields:[proposalId],references:[id],onDelete:Cascade)
+ tokenHash String @unique
+ expiresAt DateTime
+ revokedAt DateTime?
+ acceptedAt DateTime?
+ acceptedName String?
+ acceptedEmail String?
+ emailVerifiedAt DateTime?
+ acceptanceText String?
+ confirmedAt DateTime?
+ rejectedAt DateTime?
+ decisionNote String?
+ createdAt DateTime @default(now())
+ @@index([proposalId])
+ @@map("proposal_invitations")
+}
+
+model ProposalDelivery {
+ id String @id @default(cuid())
+ proposalId String
+ proposal CaseProposal @relation(fields:[proposalId],references:[id],onDelete:Cascade)
+ requestKey String
+ invitationId String
+ recipient String
+ subject String
+ text String
+ snapshotHash String
+ pdfHash String
+ pdf String
+ status String @default("SENDING")
+ messageId String?
+ errorCode String?
+ createdAt DateTime @default(now())
+ completedAt DateTime?
+ @@unique([proposalId,requestKey])
+ @@index([proposalId,createdAt])
+ @@map("proposal_deliveries")
+}
+
+model CaseNotification {
+ id String @id @default(cuid())
+ caseId String
+ invitationId String
+ kind String
+ recipient String
+ subject String
+ text String
+ status String @default("PENDING")
+ attempts Int @default(0)
+ errorCode String?
+ createdAt DateTime @default(now())
+ completedAt DateTime?
+ @@unique([invitationId,kind])
+ @@index([caseId,createdAt])
+ @@map("case_notifications")
+}
+
+model CaseActivity {
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ requestKey String
+ kind String
+ text String
+ details String @default("{}")
+ dueAt DateTime?
+ doneAt DateTime?
+ version Int @default(1)
+ lastMutationKey String?
+ createdAt DateTime @default(now())
+ @@unique([caseId,requestKey])
+ @@index([caseId,createdAt])
+ @@map("case_activities")
+}
+
+model OfferEmailCode {
+ id String @id @default(cuid())
+ invitationId String @unique
+ email String
+ codeHash String
+ expiresAt DateTime
+ attempts Int @default(0)
+ sends Int @default(1)
+ sentAt DateTime @default(now())
+ consumedAt DateTime?
+ status String @default("SENDING")
+ @@map("offer_email_codes")
+}
+
+model DealerSetup {
+ sellerId String @id
+ revision Int @default(1)
+ profile String @default("{}")
+ completedAt DateTime?
+ mailVerifiedAt DateTime?
+ updatedAt DateTime @updatedAt
+ @@map("dealer_setup")
+}
+model DealerAgreement {
+ id String @id @default(cuid())
+ sellerId String
+ version String
+ documentHash String
+ document String
+ signer String
+ company String
+ mode String
+ acceptedAt DateTime @default(now())
+ @@unique([sellerId,documentHash])
+ @@map("dealer_agreements")
+}
+
+model CaseFile {
+ handoverFiles CaseHandoverFile[]
+ orderEvents SupplierOrderEvent[]
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ name String
+ mimeType String
+ hash String
+ size Int
+ data String
+ createdAt DateTime @default(now())
+ @@unique([caseId,hash])
+ @@map("case_files")
+}
+
+
+model CasePaymentCheck {
+ id Int @id @default(autoincrement())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ entryId String
+ requestKey String
+ sellerId String
+ status String
+ method String
+ reference String
+ note String
+ createdAt DateTime @default(now())
+ @@unique([caseId,requestKey])
+ @@index([caseId,entryId,id])
+ @@map("case_payment_checks")
+}
+
+
+model CatalogConversion {
+ id String @id @default(cuid())
+ catalogId String
+ catalog DealerCatalog @relation(fields:[catalogId],references:[id],onDelete:Cascade)
+ revision Int
+ status String
+ error String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([catalogId,createdAt])
+ @@map("catalog_conversions")
+}
+
+model CaseOrderBatch {
+ revision Int @default(0)
+ events SupplierOrderEvent[]
+ deliveries SupplierOrderDelivery[]
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ proposalId String
+ requestKey String
+ sellerId String
+ snapshot String
+ createdAt DateTime @default(now())
+ @@unique([caseId,requestKey])
+ @@unique([caseId,proposalId])
+ @@map("case_order_batches")
+}
+
+
+model SupplierOrderDelivery {
+ id String @id @default(cuid())
+ batchId String
+ batch CaseOrderBatch @relation(fields:[batchId],references:[id],onDelete:Cascade)
+ groupIndex Int
+ requestKey String
+ recipient String
+ subject String
+ text String
+ pdf String
+ snapshotHash String
+ status String @default("SENDING")
+ errorCode String?
+ messageId String?
+ createdAt DateTime @default(now())
+ completedAt DateTime?
+ @@unique([batchId,requestKey])
+ @@index([batchId,groupIndex])
+ @@map("supplier_order_deliveries")
+}
+
+
+
+model SupplierOrderEvent {
+ fileId String?
+ file CaseFile? @relation(fields:[fileId],references:[id],onDelete:Restrict)
+ id String @id @default(cuid())
+ batchId String
+ batch CaseOrderBatch @relation(fields:[batchId],references:[id],onDelete:Cascade)
+ requestKey String
+ revision Int
+ groupIndex Int
+ kind String
+ snapshot String
+ sellerId String
+ createdAt DateTime @default(now())
+ @@unique([batchId,requestKey])
+ @@unique([batchId,revision])
+ @@map("supplier_order_events")
+}
+
+
+
+
+
+model CaseInstallationEvent {
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ revision Int
+ requestKey String
+ sellerId String
+ snapshot String
+ createdAt DateTime @default(now())
+ @@unique([caseId,revision])
+ @@unique([caseId,requestKey])
+ @@map("case_installation_events")
+}
+
+
+model CaseHandover {
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ requestKey String
+ revision Int
+ sellerId String
+ snapshot String
+ pdf String
+ createdAt DateTime @default(now())
+ files CaseHandoverFile[]
+ @@unique([caseId,requestKey])
+ @@unique([caseId,revision])
+ @@map("case_handovers")
+}
+model CaseHandoverFile {
+ handoverId String
+ handover CaseHandover @relation(fields:[handoverId],references:[id],onDelete:Cascade)
+ fileId String
+ file CaseFile @relation(fields:[fileId],references:[id],onDelete:Restrict)
+ @@id([handoverId,fileId])
+ @@map("case_handover_files")
+}
+
+
+model SupportAccess {
+ mailStatus String @default("NOT_SENT")
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ tokenHash String @unique
+ email String
+ expiresAt DateTime
+ revokedAt DateTime?
+ createdAt DateTime @default(now())
+ @@map("support_accesses")
+}
+model SupportTicket {
+ works SupportWork[]
+ notifications SupportNotification[]
+ id String @id @default(cuid())
+ caseId String
+ customerCase CustomerCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+ requestKey String
+ title String
+ description String
+ priority String
+ status String @default("OPEN")
+ assignee String @default("")
+ revision Int @default(0)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ events SupportTicketEvent[]
+ photos SupportPhoto[]
+ @@unique([caseId,requestKey])
+ @@map("support_tickets")
+}
+model SupportTicketEvent {
+ id String @id @default(cuid())
+ ticketId String
+ ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
+ requestKey String
+ revision Int
+ actor String
+ status String
+ priority String
+ assignee String
+ internalNote String
+ message String
+ createdAt DateTime @default(now())
+ @@unique([ticketId,requestKey])
+ @@unique([ticketId,revision])
+ @@map("support_ticket_events")
+}
+model SupportPhoto {
+ id String @id @default(cuid())
+ ticketId String
+ ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
+ name String
+ mimeType String
+ hash String
+ data String
+ size Int
+ createdAt DateTime @default(now())
+ @@unique([ticketId,hash])
+ @@map("support_photos")
+}
+
+
+
+model SupportNotification {
+ id String @id @default(cuid())
+ ticketId String
+ ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
+ revision Int
+ kind String
+ recipient String
+ subject String
+ text String
+ status String @default("PENDING")
+ errorCode String?
+ attempts Int @default(0)
+ startedAt DateTime?
+ completedAt DateTime?
+ createdAt DateTime @default(now())
+ attemptHistory SupportNotificationAttempt[]
+ @@unique([ticketId,revision,kind])
+ @@index([status,createdAt])
+ @@map("support_notifications")
+}
+model SupportNotificationAttempt {
+ id String @id @default(cuid())
+ notificationId String
+ notification SupportNotification @relation(fields:[notificationId],references:[id],onDelete:Cascade)
+ number Int
+ status String
+ recipient String
+ text String
+ errorCode String?
+ messageId String?
+ startedAt DateTime @default(now())
+ completedAt DateTime?
+ @@unique([notificationId,number])
+ @@map("support_notification_attempts")
+}
+
+
+model SupportWork {
+ partOrders SupportPartOrder[]
+ quotes SupportQuote[]
+ id String @id @default(cuid())
+ ticketId String
+ ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
+ requestKey String
+ title String
+ status String @default("PLANNED")
+ revision Int @default(0)
+ snapshot String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ events SupportWorkEvent[]
+ @@unique([ticketId,requestKey])
+ @@index([status])
+ @@map("support_works")
+}
+
+model SupportPartOrder {
+ documents SupportPartDocument[]
+ deliveries SupportPartOrderDelivery[]
+ id String @id @default(cuid())
+ workId String
+ work SupportWork @relation(fields:[workId],references:[id],onDelete:Cascade)
+ number Int
+ requestKey String
+ supplier String
+ status String @default("DRAFT")
+ revision Int @default(0)
+ snapshot String
+ pdf String
+ sellerId String
+ createdAt DateTime @default(now())
+ events SupportPartOrderEvent[]
+ @@unique([workId,number])
+ @@unique([workId,requestKey])
+ @@map("support_part_orders")
+}
+
+model SupportPartOrderDelivery {
+ id String @id @default(cuid())
+ orderId String
+ order SupportPartOrder @relation(fields:[orderId],references:[id],onDelete:Cascade)
+ requestKey String
+ sellerId String
+ recipient String
+ sender String
+ subject String
+ text String
+ filename String
+ pdfHash String
+ snapshotHash String
+ status String @default("SENDING")
+ errorCode String?
+ messageId String?
+ resolution String?
+ resolutionKey String?
+ resolutionReference String?
+ resolutionNote String?
+ resolvedBy String?
+ resolvedAt DateTime?
+ createdAt DateTime @default(now())
+ completedAt DateTime?
+ @@unique([orderId,requestKey])
+ @@index([status,createdAt])
+ @@map("support_part_order_deliveries")
+}
+
+model SupportPartOrderEvent {
+ id String @id @default(cuid())
+ orderId String
+ order SupportPartOrder @relation(fields:[orderId],references:[id],onDelete:Cascade)
+ requestKey String
+ revision Int
+ kind String
+ snapshot String
+ sellerId String
+ createdAt DateTime @default(now())
+ @@unique([orderId,requestKey])
+ @@unique([orderId,revision])
+ @@map("support_part_order_events")
+}
+
+model SupportQuote {
+ id String @id @default(cuid())
+ workId String
+ work SupportWork @relation(fields:[workId],references:[id],onDelete:Cascade)
+ number Int
+ requestKey String
+ snapshot String
+ pdf String
+ status String @default("ISSUED")
+ sellerId String
+ decisionKey String?
+ decisionActor String?
+ decisionNote String?
+ decidedAt DateTime?
+ createdAt DateTime @default(now())
+ @@unique([workId,number])
+ @@unique([workId,requestKey])
+ @@map("support_quotes")
+}
+model SupportWorkEvent {
+ id String @id @default(cuid())
+ workId String
+ work SupportWork @relation(fields:[workId],references:[id],onDelete:Cascade)
+ revision Int
+ requestKey String
+ snapshot String
+ sellerId String
+ createdAt DateTime @default(now())
+ @@unique([workId,requestKey])
+ @@unique([workId,revision])
+ @@map("support_work_events")
+}
+
+model SupportPartDocument {
+ invoiceId String?
+ basisCostId String?
+ id String @id @default(cuid())
+ orderId String
+ order SupportPartOrder @relation(fields:[orderId],references:[id],onDelete:Cascade)
+ caseId String
+ requestKey String
+ documentId String
+ kind String
+ reference String
+ occurredOn String
+ netCents Int
+ allocatedCents Int
+ costId String?
+ supersedesId String? @unique
+ note String
+ sellerId String
+ createdAt DateTime @default(now())
+ @@unique([orderId,requestKey])
+ @@index([caseId])
+ @@map("support_part_documents")
+}
+

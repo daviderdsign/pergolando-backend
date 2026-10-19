@@ -27,12 +27,35 @@ export interface PuntoNormalizzato {
 export class PerspectiveService {
   private readonly logger = new Logger(PerspectiveService.name);
 
+  async analizzaFoto(fotoBase64: string): Promise<{
+    lineeProspettiva?: (PuntoNormalizzato[] | null)[];
+    punti: PuntoNormalizzato[];
+    puntiProfondita: PuntoNormalizzato[];
+    affidabilita: 'incerta' | 'da_confermare';
+    messaggio: string;
+  }> {
+    const serviceUrl = process.env.GEOCALIB_SERVICE_URL;
+    if (!serviceUrl) throw new DomainException('PROSPETTIVA_NON_CONFIGURATA', 'Analisi foto non disponibile.', HttpStatus.SERVICE_UNAVAILABLE);
+    try {
+      const response = await fetch(new URL('/detect-references', serviceUrl), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fotoBase64 }), signal: AbortSignal.timeout(60_000),
+      });
+      if (!response.ok) throw new Error('analysis-failed');
+      return await response.json() as Awaited<ReturnType<PerspectiveService['analizzaFoto']>>;
+    } catch {
+      throw new DomainException('ANALISI_FOTO_FALLITA', 'Analisi automatica non riuscita. Puoi segnare i riferimenti con il dito.', HttpStatus.BAD_GATEWAY);
+    }
+  }
+
   async calcolaProspettiva(dto: CalcolaProspettivaDto): Promise<{
+    avviso?: string | null;
     tettoNormalizzato: PuntoNormalizzato[];
     posaCamera: {
       rvec: number[];
       tvec: number[];
       fovDeg: number;
+      fxPx?: number; fyPx?: number; cxPx?: number; cyPx?: number;
       fotoLarghezzaPx: number;
       fotoAltezzaPx: number;
     };
@@ -53,6 +76,12 @@ export class PerspectiveService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fotoBase64: dto.fotoBase64,
+          puntiFuga: dto.puntiFuga,
+          altezzaRiferimentoCm: dto.altezzaRiferimentoCm,
+          focaleEquivalente35Mm: dto.focaleEquivalente35Mm,
+          puntiVerticali: dto.puntiVerticali,
+          puntiProfondita: dto.puntiProfondita,
+          altezzaVerticaleCm: dto.altezzaVerticaleCm,
           punti: dto.punti,
           lineaLunghezzaCm: dto.lineaLunghezzaCm,
           puntoControllo: dto.puntoControllo,
@@ -72,10 +101,12 @@ export class PerspectiveService {
       );
     }
 
-    if (response.status === 422) {
+    if (response.status === 422 || response.status === 400) {
+      const detail = await response.json() as { message?: string };
+      this.logger.warn({ reason: detail.message }, 'Perspective calibration rejected');
       throw new DomainException(
         'PROSPETTIVA_NON_CALCOLABILE',
-        'Non è stato possibile calcolare la prospettiva da questi punti — prova a ritoccarli, distanziandoli di più tra loro.',
+        detail.message ? `Calcolo prospettiva: ${detail.message}.` : 'Il calcolo della prospettiva non è riuscito: controlla i riferimenti.',
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
@@ -95,20 +126,26 @@ export class PerspectiveService {
       rvec: number[];
       tvec: number[];
       fovDeg: number;
+      fxPx?: number; fyPx?: number; cxPx?: number; cyPx?: number;
       imageWidthPx: number;
       imageHeightPx: number;
-      tettoNormalizzato: PuntoNormalizzato[];
+    avviso?: string | null;
+    tettoNormalizzato: PuntoNormalizzato[];
     };
 
     return {
+      avviso: body.avviso ?? null,
       tettoNormalizzato: body.tettoNormalizzato,
       posaCamera: {
         rvec: body.rvec,
         tvec: body.tvec,
         fovDeg: body.fovDeg,
+        fxPx: body.fxPx, fyPx: body.fyPx, cxPx: body.cxPx, cyPx: body.cyPx,
         fotoLarghezzaPx: body.imageWidthPx,
         fotoAltezzaPx: body.imageHeightPx,
       },
     };
   }
 }
+
+
