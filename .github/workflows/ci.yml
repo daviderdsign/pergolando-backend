@@ -38,6 +38,14 @@ jobs:
       - name: Unit + integration tests (coverage)
         run: pnpm test:cov
 
+      - name: Quote acceptance and notification regressions (isolated databases)
+        run: |
+          pnpm build
+          node test-simple-offer-acceptance.cjs
+          node test-invitations.cjs
+          node test-offer-email-code.cjs
+          node test-notifications.cjs
+
       # NOTE: this is a thin first vertical slice (auth + bundle loading only) —
       # the 85% gate isn't enforced as a hard failure yet. Raise this once more
       # slices land; see README "Coverage gate" section.
